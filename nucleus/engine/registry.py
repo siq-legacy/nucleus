@@ -16,6 +16,13 @@ log = LogHelper('nucleus')
 class InvalidDependencyError(Exception):
     """..."""
 
+TIMEOUTS = [(10, 1), (20, 3), (30, 10)]
+
+def next_timeout(attempt):
+    for threshold, timeout in TIMEOUTS:
+        if attempt <= threshold:
+            return timeout
+
 class ServiceRegistry(Unit):
     """The service registry."""
 
@@ -43,7 +50,12 @@ class ServiceRegistry(Unit):
 
     def manage(self, mule):
         session = self.schema.session
+
+        attempt = 1
         while True:
+            log('info', 'attempting to verify registrations (attempt %d)', attempt)
+            attempt += 1
+
             try:
                 registered = self._verify_registrations(session)
             finally:
@@ -52,13 +64,17 @@ class ServiceRegistry(Unit):
             if registered:
                 log('info', 'all services registered')
                 break
-            else:
-                time.sleep(1)
 
-        round = 1
+            timeout = next_timeout(attempt)
+            if timeout is not None:
+                time.sleep(timeout)
+            else:
+                raise Exception('missing services')
+
+        attempt = 1
         while True:
-            log('info', 'attempting to start up all services (round %d)', round)
-            round += 1
+            log('info', 'attempting to start up all services (attempt %d)', attempt)
+            attempt += 1
 
             try:
                 ready = self._manage_services(session)
@@ -68,8 +84,12 @@ class ServiceRegistry(Unit):
             if ready:
                 log('info', 'all services ready')
                 break
+
+            timeout = next_timeout(attempt)
+            if timeout is not None:
+                time.sleep(timeout)
             else:
-                time.sleep(1)
+                raise Exception('service startup failed')
 
     def _enumerate_services(self, session):
         graph = {}
