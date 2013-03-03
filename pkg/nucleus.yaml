@@ -1,0 +1,39 @@
+uwsgi:
+  daemonize: ${LOGPATH}/nucleus.log
+  group: uwsgi
+  home: ${ENVPATH}/python
+  http-socket: 127.0.0.1:10000
+  log-date: "%%Y-%%m-%%dT%%H:%%M:%%SL UWSGI"
+  master: true
+  module: spire.runtime.uwsgi
+  mules: 1
+  need-app: true
+  pidfile: ${VARPATH}/nucleus.pid
+  processes: 1
+  procname-prefix-spaced: "[nucleus]"
+  threads: 4
+  touch-logreopen: ${VARPATH}/nucleus.logreopen
+  uid: uwsgi
+  vacuum: true
+components:
+  - nucleus.components.Nucleus
+configuration:
+  nucleus.components.Nucleus/api:
+    path: /
+  nucleus.engine.registry.ServiceRegistry:
+    required_services: [platoon, docket, enamel, flux, truss]
+  schema:nucleus:
+    admin_url: postgresql://postgres@localhost/postgres
+    url: postgresql://postgres@localhost/nucleus
+logging:
+  disable_existing_loggers: false
+  formatters:
+    standard:
+      (): spire.support.logs.LogFormatter
+  handlers:
+    stream:
+      class: logging.StreamHandler
+      formatter: standard
+  root:
+    level: DEBUG
+    handlers: [stream]
