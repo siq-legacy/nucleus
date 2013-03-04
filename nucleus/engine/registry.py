@@ -16,7 +16,7 @@ log = LogHelper('nucleus')
 class InvalidDependencyError(Exception):
     """..."""
 
-TIMEOUTS = [(10, 1), (20, 3), (30, 10)]
+TIMEOUTS = [(10, 1), (20, 3), (30, 10), (40, 20)]
 
 def next_timeout(attempt):
     for threshold, timeout in TIMEOUTS:
