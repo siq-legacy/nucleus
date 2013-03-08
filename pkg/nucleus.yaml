@@ -21,7 +21,7 @@ configuration:
   nucleus.components.Nucleus/api:
     path: /
   nucleus.engine.registry.ServiceRegistry:
-    required_services: [platoon, docket, enamel, truss]
+    required_services: [platoon, docket, flux, enamel, truss]
   schema:nucleus:
     admin_url: postgresql://postgres@localhost/postgres
     url: postgresql://postgres@localhost/nucleus
