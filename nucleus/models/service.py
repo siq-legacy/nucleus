@@ -61,7 +61,7 @@ class Service(Model):
         if ignore_response:
             return
         elif not response.ok:
-            raise Exception()
+            raise Exception('response invalid: %s' % response.status)
 
         content = response.unserialize()
         if content['status'] == 'ready':
