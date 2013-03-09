@@ -50,16 +50,22 @@ class ServiceRegistry(Unit):
 
     def manage(self, mule):
         session = self.schema.session
+        try:
+            self._manage_services(session)
+        finally:
+            session.close()
 
+    def _manage_services(self, session):
         attempt = 1
         while True:
             log('info', 'attempting to verify registrations (attempt %d)', attempt)
             attempt += 1
 
+            self.schema.lock_table(session, 'service')
             try:
                 registered = self._verify_registrations(session)
             finally:
-                session.close()
+                session.rollback()
 
             if registered:
                 log('info', 'all services registered')
@@ -76,10 +82,11 @@ class ServiceRegistry(Unit):
             log('info', 'attempting to start up all services (attempt %d)', attempt)
             attempt += 1
 
+            self.schema.lock_table(session, 'service')
             try:
-                ready = self._manage_services(session)
+                ready = self._start_services(session)
             finally:
-                session.close()
+                session.rollback()
 
             if ready:
                 log('info', 'all services ready')
@@ -107,7 +114,7 @@ class ServiceRegistry(Unit):
 
         return topological_sort(graph)
 
-    def _manage_services(self, session):
+    def _start_services(self, session):
         yielding = []
         for service in self._enumerate_services(session):
             if service.status == 'ready' or not service.registered:
@@ -126,17 +133,17 @@ class ServiceRegistry(Unit):
                 service.instruct({'status': 'starting', 'stage': service.stage})
 
         session.commit()
-        ready = True
+        self.schema.lock_table(session, 'service')
 
+        ready = True
         statuses = []
+
         for service in session.query(Service).order_by('id'):
             statuses.append('%s=%s' % (service.id, service.status))
             if service.status != 'ready':
                 ready = False
 
         log('info', 'service status: %s' % ', '.join(statuses))
-
-        session.rollback()
         return ready
 
     def _verify_registrations(self, session):
@@ -149,5 +156,4 @@ class ServiceRegistry(Unit):
                 registered = False
 
         log('info', 'registration status: %s' % ', '.join(registrations))
-        session.rollback()
         return registered
