@@ -19,8 +19,9 @@ class ServiceController(ModelController):
 
     def create(self, request, response, subject, data):
         session = self.schema.session
-        subject = session.query(Service).get(data['id'])
+        self.schema.lock_table(session, 'service')
 
+        subject = session.query(Service).get(data['id'])
         if subject:
             subject.update_with_mapping(data, attrs='endpoint pid dependencies required')
         else:

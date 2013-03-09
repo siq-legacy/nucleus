@@ -37,15 +37,20 @@ class ServiceRegistry(Unit):
         session = self.schema.session
         query = session.query(Service)
 
-        for id in self.configuration.get('required_services', []):
-            service = query.get(id)
-            if not service:
-                Service.create(session, id=id)
+        self.schema.lock_table(session, 'service')
+        try:
+            for id in self.configuration.get('required_services', []):
+                service = query.get(id)
+                if not service:
+                    Service.create(session, id=id)
 
-        for service in query:
-            service.reset()
+            for service in query:
+                service.reset()
 
-        session.commit()
+            session.commit()
+        finally:
+            session.close()
+
         current_runtime().register_mule('service-registry', self.manage)
 
     def manage(self, mule):
