@@ -37,7 +37,7 @@ class ServiceRegistry(Unit):
         session = self.schema.session
         query = session.query(Service)
 
-        self.schema.lock_table(session, 'service')
+        self.schema.lock_tables(session, 'service')
         try:
             for id in self.configuration.get('required_services', []):
                 service = query.get(id)
@@ -51,6 +51,7 @@ class ServiceRegistry(Unit):
         finally:
             session.close()
 
+        self.schema.purge()
         current_runtime().register_mule('service-registry', self.manage)
 
     def manage(self, mule):
@@ -66,7 +67,6 @@ class ServiceRegistry(Unit):
             log('info', 'attempting to verify registrations (attempt %d)', attempt)
             attempt += 1
 
-            self.schema.lock_table(session, 'service')
             try:
                 registered = self._verify_registrations(session)
             finally:
@@ -87,7 +87,6 @@ class ServiceRegistry(Unit):
             log('info', 'attempting to start up all services (attempt %d)', attempt)
             attempt += 1
 
-            self.schema.lock_table(session, 'service')
             try:
                 ready = self._start_services(session)
             finally:
@@ -138,7 +137,6 @@ class ServiceRegistry(Unit):
                 service.instruct({'status': 'starting', 'stage': service.stage})
 
         session.commit()
-        self.schema.lock_table(session, 'service')
 
         ready = True
         statuses = []
